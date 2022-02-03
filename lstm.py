@@ -17,50 +17,37 @@ for i in traj_nums:
 
 trajs = list(filter(lambda x: len(x)>4, trajs))
 
-print('74 Trajs with 862 Data Points')
+# print('74 Trajs with 862 Data Points')
 
 test_traj = trajs[0]
-train_traj = trajs[1:]
-
-class LSTM(nn.Module):
-    def __init__(self, num_sensors=15, hidden_units=60):
-        super().__init__()
-        self.num_sensors = num_sensors  # this is the number of features
-        self.hidden_units = hidden_units
-        self.num_layers = 1
-
-        self.lstm = nn.LSTM(
-            input_size=num_sensors,
-            hidden_size=hidden_units,
-            batch_first=True,
-            num_layers=self.num_layers,
-        )
-
-        self.linear = nn.Linear(in_features=self.hidden_units, out_features=15)
-        self.softmax = nn.Softmax()
-
-    def forward(self, x):
-        batch_size = x.shape[0]
-        h0 = torch.zeros(self.num_layers, batch_size, self.hidden_units).requires_grad_().to('cuda')
-        c0 = torch.zeros(self.num_layers, batch_size, self.hidden_units).requires_grad_().to('cuda')
-
-        _, (hn, _) = self.lstm(x, (h0, c0))
-        out = self.linear(hn[0]).flatten()  # First dim of Hn is num_layers, which is set to 1 above.
-        out = self.softmax(out)
-        return out
-
-model = LSTM()
-model.to('cuda')
-loss_function = nn.KLDivLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
-
-n_epoch = 1
-
-loss_values = []
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def train_and_test():
+class MyLSTM(nn.Module):
+    def __init__(self, input_size=15, hidden_dim=60, output_size=15):
+        super(MyLSTM, self).__init__()
+
+        self.lstm = nn.LSTM(input_size, hidden_dim)
+        self.lin = nn.Linear(hidden_dim, output_size)
+        self.softmax = nn.Softmax()
+
+    def forward(self, x):
+        lstm_out, _ = self.lstm(x)
+        out = self.lin(lstm_out)
+        out = self.softmax(out)
+        return out
+
+model = MyLSTM()
+model.to(device)
+loss_function = nn.KLDivLoss()
+optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+
+n_epoch = 15
+
+loss_values = []
+
+
+def train():
     for epoch in range(n_epoch):
 
         traj = test_traj
@@ -73,6 +60,7 @@ def train_and_test():
 
             pred = model(input)
             true = torch.tensor(traj[i+1]).to(device)
+            true = torch.reshape(true, (1,1,15))
 
             loss = (loss_function(pred, true)).to(device)
 
@@ -90,6 +78,6 @@ def train_and_test():
 
     return loss_values
 
-lv = train_and_test()
+lv = train()
 plt.plot(lv)
 plt.show()
