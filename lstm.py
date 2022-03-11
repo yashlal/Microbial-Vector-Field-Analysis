@@ -1,83 +1,142 @@
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import sys
-import seaborn as sns
-import torch.nn as nn
 import torch
+import torch.nn as nn
+import seaborn as sns
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
-df = pd.read_csv('dataset.csv', index_col=0)
-species = df.columns.values.tolist()[2:]
-traj_nums = list(range(1,190))
-trajs = []
+def create_inout_sequences(iners_col, tw, p_labels):
+    train_inout_seq = []
+    for i in range(len(iners_col)-tw):
+        in_l = iners_col[i:i+tw]
+        out_val = iners_col[i+tw:i+tw+1]
 
-for i in traj_nums:
-    traj = df.loc[df['Trajectory'] == i].iloc[:, 2:].values.tolist()
-    trajs.append(traj)
+        check_l = p_labels[i:i+tw+1]
 
-trajs = list(filter(lambda x: len(x)>4, trajs))
+        if all([check_l[i]==check_l[0] for i in range(len(check_l))]):
+            if all([k1>=0 for k1 in in_l]) and all([k2>=0 for k2 in out_val]):
+                train_inout_seq.append((in_l, out_val))
 
-# print('74 Trajs with 862 Data Points')
+    for j in range(len(iners_col)-2*tw):
+        iners_l2 = iners_col[j:j+2*tw]
+        check_l2 = p_labels[j:j+2*tw]
+        if all([k3>=0 for k3 in iners_l2]) and all([check_l2[q]==check_l2[0] for q in range(len(check_l2))]):
+            test_seq = (iners_col[j:j+tw], iners_col[j+tw:j+2*tw])
 
-test_traj = trajs[0]
+    return train_inout_seq, test_seq
+
+class LSTM(nn.Module):
+    def __init__(self, input_size=1, hidden_layer_size=100, output_size=1):
+        super().__init__()
+        self.hidden_layer_size = hidden_layer_size
+
+        self.lstm = nn.LSTM(input_size, hidden_layer_size)
+
+        self.linear = nn.Linear(hidden_layer_size, output_size)
+        self.SM = nn.Sigmoid()
+
+    def forward(self, input_seq):
+
+        lstm_out, _ = self.lstm(input_seq.view(len(input_seq) ,1, -1), self.hidden_cell)
+        pred = self.linear(lstm_out.view(len(input_seq), -1))[-1]
+        pred = self.SM(pred)
+        return pred
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-class MyLSTM(nn.Module):
-    def __init__(self, input_size=15, hidden_dim=60, output_size=15):
-        super(MyLSTM, self).__init__()
+vag_data = pd.read_excel("VMBData_clean.xlsx")
 
-        self.lstm = nn.LSTM(input_size, hidden_dim)
-        self.lin = nn.Linear(hidden_dim, output_size)
-        self.softmax = nn.Softmax()
+all_data = vag_data['blast_L_iners'].values.astype(float).tolist()
 
-    def forward(self, x):
-        lstm_out, _ = self.lstm(x)
-        out = self.lin(lstm_out)
-        out = self.softmax(out)
-        return out
+for i in range(len(all_data)):
+    if (all_data[i]>=0)==False:
+        if ((all_data[i+1]>=0)==True) and ((all_data[i-1]>=0)==True):
+            all_data[i] = (all_data[i+1]+all_data[i-1])/2
 
-model = MyLSTM()
-model.to(device)
-loss_function = nn.KLDivLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+p_labels = vag_data['meta_Participant'].values.tolist()
 
-n_epoch = 15
+train_window = 14
+train_inout_seq, test_seq = create_inout_sequences(all_data, train_window, p_labels)
 
-loss_values = []
+test_in = test_seq[0]
+test_out = test_seq[1]
 
+def test1(model, test_inputs, fut_pred):
+    model.eval()
+    new_test_inputs = test_inputs.copy()
+    for j in range(fut_pred): #'fut_pred' for only predictions
+        seq = torch.FloatTensor(new_test_inputs[-train_window:]).to(device)
+        with torch.no_grad():
+            model.hidden = (torch.zeros(1,1,model.hidden_layer_size),
+                            torch.zeros(1,1,model.hidden_layer_size))
+            new_test_inputs.append(model(seq).item())
+    output = new_test_inputs[-fut_pred:]
 
-def train():
-    for epoch in range(n_epoch):
+    return torch.FloatTensor(output)
 
-        traj = test_traj
-        for i in range(len(traj)-1):
+def main(hsize=100, num_epochs=50, LR=0.01):
+    #Params
 
-            model.zero_grad()
+    print(f'H:{hsize} E:{num_epochs} LR:{LR}')
 
-            input = torch.tensor(traj[i]).to(device)
-            input = torch.reshape(input, (1,1,15))
+    model = LSTM(hidden_layer_size=hsize).to(device)
+    loss_function = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(),lr=LR)
 
-            pred = model(input)
-            true = torch.tensor(traj[i+1]).to(device)
-            true = torch.reshape(true, (1,1,15))
+    epochs = num_epochs
 
-            loss = (loss_function(pred, true)).to(device)
+    train_loss_list = []
+    test1_loss_list = []
+    test2_loss_list = []
 
-            loss_values.append(loss.item())
+    for i in range(epochs):
+        epoch_loss = []
+        for seq, labels in train_inout_seq:
+            seq = torch.FloatTensor(seq).to(device)
+            labels = torch.FloatTensor(labels).to(device)
 
-            loss.backward()
+            optimizer.zero_grad()
+            model.train()
+            model.hidden_cell = (torch.zeros(1, 1, model.hidden_layer_size).to(device),
+                                torch.zeros(1, 1, model.hidden_layer_size).to(device))
+
+            y_pred = model(seq)
+            single_loss = loss_function(y_pred, labels)
+            single_loss.backward()
+            train_loss = single_loss.item()
             optimizer.step()
 
-            # if (epoch%100)==0 and (i==0):
-            #     print(f'Epoch {epoch}')
-            #     print(f'Loss {loss.item()}')
-            #     plt.plot(loss_values)
-            #     plt.show()
-            #     loss_values.clear()
+            epoch_loss.append(train_loss)
 
-    return loss_values
+        if i%25 == 1 or i==epochs-1:
+            fut_pred = 14
+            tensor_true_test_data = torch.FloatTensor(test_out).view(-1,1).to(device)
 
-lv = train()
-plt.plot(lv)
-plt.show()
+            ap1 = test1(model, test_in, fut_pred).view(-1,1).to(device)
+            test_loss1 = loss_function(ap1, tensor_true_test_data).item()
+
+            test1_loss_list.append((i, test_loss1))
+
+            fig1, ax1 = plt.subplots()
+            ax1.plot(tensor_true_test_data.tolist(), label='True')
+            ax1.plot(ap1.tolist(), label='Test1')
+            ax1.legend()
+            ax1.set_title('L. Iners NN Test')
+            ax1.set_ylabel('Relative Abundance')
+            plt.show()
+
+            print(f'Epoch:{i}   TrainLoss:{train_loss}    TestLoss1:{test_loss1}')
+        loss_avg = sum(epoch_loss)/len(epoch_loss)
+        train_loss_list.append(loss_avg)
+    test1_loss_list = np.array(test1_loss_list)
+
+    fig2, ax2 = plt.subplots()
+    ax2.plot(train_loss_list)
+    ax2.set_title('Training Loss')
+    plt.show()
+
+    fig3, ax3 = plt.subplots()
+    ax3.plot(test1_loss_list[:,0], test1_loss_list[:,1], label='Test1')
+    ax3.legend()
+    ax3.set_title('Testing Loss')
+    plt.show()
