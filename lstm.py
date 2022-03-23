@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 def create_inout_sequences(iners_col, tw, p_labels):
     train_inout_seq = []
+    train_indices = []
     for i in range(len(iners_col)-tw):
         in_l = iners_col[i:i+tw]
         out_val = iners_col[i+tw:i+tw+1]
@@ -16,16 +17,19 @@ def create_inout_sequences(iners_col, tw, p_labels):
         if all([check_l[i]==check_l[0] for i in range(len(check_l))]):
             if all([k1>=0 for k1 in in_l]) and all([k2>=0 for k2 in out_val]):
                 train_inout_seq.append((in_l, out_val))
+                train_indices.append(i+tw)
 
     test_seqs = []
+    test_indices = []
     for j in range(len(iners_col)-2*tw):
         iners_l2 = iners_col[j:j+2*tw]
         check_l2 = p_labels[j:j+2*tw]
         if all([k3>=0 for k3 in iners_l2]) and all([check_l2[q]==check_l2[0] for q in range(len(check_l2))]):
             test_seq = (iners_col[j:j+tw], iners_col[j+tw:j+2*tw])
             test_seqs.append(test_seq)
+            test_indices.append(j+tw)
 
-    return train_inout_seq, test_seqs
+    return train_inout_seq, test_seqs, (train_indices, test_indices)
 
 class LSTM(nn.Module):
     def __init__(self, input_size=1, hidden_layer_size=100, output_size=1):
@@ -58,12 +62,23 @@ for i in range(len(all_data)):
 p_labels = vag_data['meta_Participant'].values.tolist()
 
 train_window = 14
-train_inout_seq, test_seqs = create_inout_sequences(all_data, train_window, p_labels)
+train_inout_seq, test_seqs, indices_tuple = create_inout_sequences(all_data, train_window, p_labels)
 
-test_seq = test_seqs[0]
+#test trajectory number
+ttn = 0
+test_seq = test_seqs[ttn]
+
+test_ind = indices_tuple[1][ttn]
+train_indices_to_remove = list(range(test_ind, test_ind+train_window))
+
+clean_train_inout_seq = []
+for seq_ind in range(len(train_inout_seq)):
+    if indices_tuple[0][seq_ind] not in train_indices_to_remove:
+        clean_train_inout_seq.append(train_inout_seq[seq_ind])
 
 test_in = test_seq[0]
 test_out = test_seq[1]
+
 
 def test1(model, test_inputs, fut_pred):
     model.eval()
@@ -78,7 +93,7 @@ def test1(model, test_inputs, fut_pred):
 
     return torch.FloatTensor(output)
 
-def main(hsize=100, num_epochs=50, LR=0.01):
+def main(hsize=25, num_epochs=500, LR=0.001):
     #Params
 
     print(f'H:{hsize} E:{num_epochs} LR:{LR}')
@@ -96,7 +111,7 @@ def main(hsize=100, num_epochs=50, LR=0.01):
     for i in range(epochs):
         train_graph = []
         epoch_loss = []
-        for seq, labels in train_inout_seq:
+        for seq, labels in clean_train_inout_seq:
             seq = torch.FloatTensor(seq).to(device)
             labels = torch.FloatTensor(labels).to(device)
 
@@ -128,42 +143,18 @@ def main(hsize=100, num_epochs=50, LR=0.01):
             np_train_graph = np.array(train_graph)
 
             fig1, ax1 = plt.subplots()
-            ax1.plot(np_train_graph[:,0], label='True')
-            ax1.plot(np_train_graph[:,1], label='Train_Pred')
+            ax1.plot(np_train_graph[:,0]-np_train_graph[:,1], label='True-Train Difference')
             ax1.legend()
             ax1.set_title('L. Iners NN Train')
             ax1.set_ylabel('Relative Abundance')
             plt.show()
 
-            # fig2, ax2 = plt.subplots()
-            # ax2.plot(tensor_true_test_data.tolist(), label='True')
-            # ax2.plot(ap1.tolist(), label='Test_Pred')
-            # ax2.legend()
-            # ax2.set_title('L. Iners NN Test')
-            # ax2.set_ylabel('Relative Abundance')
-            # plt.show()
-            fig11, ax11 = plt.subplots()
-            ax11.plot(np_train_graph[0:181,0], label='True')
-            ax11.plot(np_train_graph[0:181,1], label='Train_Pred')
-            ax11.legend()
-            ax11.set_title('L. Iners NN Train')
-            ax11.set_ylabel('Relative Abundance')
-            plt.show()
-
-            fig12, ax12 = plt.subplots()
-            ax12.plot(np_train_graph[350:651,0], label='True')
-            ax12.plot(np_train_graph[350:651,1], label='Train_Pred')
-            ax12.legend()
-            ax12.set_title('L. Iners NN Train')
-            ax12.set_ylabel('Relative Abundance')
-            plt.show()
-
-            fig13, ax13 = plt.subplots()
-            ax13.plot(np_train_graph[750:,0], label='True')
-            ax13.plot(np_train_graph[750:,1], label='Train_Pred')
-            ax13.legend()
-            ax13.set_title('L. Iners NN Train')
-            ax13.set_ylabel('Relative Abundance')
+            fig2, ax2 = plt.subplots()
+            ax2.plot(tensor_true_test_data.tolist(), label='True')
+            ax2.plot(ap1.tolist(), label='Test_Pred')
+            ax2.legend()
+            ax2.set_title('L. Iners NN Test')
+            ax2.set_ylabel('Relative Abundance')
             plt.show()
 
             print(f'Epoch:{i}       TestLoss1:{test_loss1}')
