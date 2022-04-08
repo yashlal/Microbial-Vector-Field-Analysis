@@ -65,7 +65,8 @@ train_window = 14
 train_inout_seq, test_seqs, indices_tuple = create_inout_sequences(all_data, train_window, p_labels)
 
 #test trajectory number
-ttn = 0
+#this controls which test trajectory you are using
+ttn = 51
 test_seq = test_seqs[ttn]
 
 test_ind = indices_tuple[1][ttn]
