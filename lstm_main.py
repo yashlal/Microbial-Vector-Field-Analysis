@@ -18,6 +18,7 @@ import os
 from torch.utils.data import DataLoader,TensorDataset
 import data_parsing
 import pickle
+import pdb
 
 def create_inout_sequences3(iners_col, tw, p_labels):
     train_inout_seq = []
@@ -70,18 +71,6 @@ class LSTM(nn.Module):
         pred = self.linear(lstm_out.view(-1,len(lstm_out[0]),len(lstm_out[0][0])))[:,-1]
         pred = self.SM(pred)
         return pred
-
-class Net(nn.Module):
-    def __init__(self, input_size=15):
-        super(Net,self).__init__()
-        self.input_size = input_size
-        self.fc1 = nn.Linear(self.input_size,1)
-        self.SM = nn.Sigmoid()
-
-    def forward(self,x):
-        x = self.fc1(x)
-        output = self.SM(x)
-        return output
 
 def train1(model, train_dataloader, loss_function1, optimizer):
     model.train()
@@ -138,12 +127,15 @@ def full_train(num_channels,hsize,layers,dropout,batch_size,LR,num_epochs,train_
     for name, param in model.named_parameters():
         if 'bias' in name:
             nn.init.constant_(param,0.0)
+            start = int(len(param)/4)
+            end = int(len(param)/2)
+            param.data[start:end].fill_(1.) #initialize forget_gate to 
         elif 'weight' in name:
-            nn.init.xavier_normal_(param)
+            nn.init.orthogonal_(param)
 
     #starting index
     index = 13
-    loss_function1 = nn.MSELoss().to(device)
+    loss_function1 = nn.BCELoss().to(device)
 
     for i in range(num_epochs):
         avg_loss = train1(model, train_dataloader, loss_function1, optimizer)
@@ -162,10 +154,6 @@ def full_train(num_channels,hsize,layers,dropout,batch_size,LR,num_epochs,train_
                 #torch.save(model,'best_ap.pt')
                 model_clone = LSTM(input_size=num_channels,hidden_layer_size=hsize,num_layers=layers,output_size=num_channels,dropout=dropout,batch_size=batch_size).to(device)
                 model_clone.load_state_dict(copy.deepcopy(model.state_dict()))
-        if i%500 == -1:
-            index += 1
-            if index > 14:
-                index += -15
 
     best_prediction = best_ap#.tolist()
 
@@ -260,34 +248,14 @@ def shap_val(model, train_X, test_X):
 
     return explainer, shap_values #These should be the 2 things you need to plot stuff
 
-def discriminator():
-    #call network
-    discrim = Net()
-    #discriminator-loop
-    ##generate fake profiles into dataloader
-    permutation=list(np.random.permutation(xData.shape[0]))
-    shuffled_X = xData[permutation,:]
-    shuffled_Y = yData[permutation,:]
-    shuffled_X = shuffled_X.type(torch.FloatTensor).to(device)
-    shuffled_Y = shuffled_Y.type(torch.FloatTensor).to(device)
-    best_model.eval()
-    fake_data = []
-    for i in range(100):
-        seq = torch.FloatTensor(shuffled_X[-train_window:]).to(device)
-        seq = seq.reshape(1,len(seq),len(seq[0]))
-        with torch.nograd():
-            nextstep=model(seq).tolist()
-        fake_data.append(nextstep)
-    ##generate real set
-    return d_loss
-
-
 blastT_labels = ['blast_L_crispatus','blast_L_iners', 'blast_L_gasseri', 'blast_L_jensenii', 'blast_L_other', 'blast_Gardnerella_spp', 'blast_Streptococcus_spp', 'blast_Atopobium_spp', 'blast_Prevotella_spp', 'blast_Bergeyella_spp', 'blast_Corynebacterium_spp', 'blast_Finegoldia_spp', 'blast_Sneathia_spp', 'blast_Dialister_spp', 'blast_Other']
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 with open('train_test_sequences.pickle','rb') as f:
     all_training_sequences, all_testing_sequences = pickle.load(f)
 
+print(len(all_training_sequences))
+    
 # Pick testing traj and remove training ones w ovrlap to avoid overfit
 testing_traj_ind = 0
 filtered_training_seqs, testing_seq = data_parsing.setup_testing(all_training_sequences, all_testing_sequences, testing_traj_ind)
@@ -298,10 +266,10 @@ testing_seq = np.array(testing_seq[:, 3:], dtype=np.float)
 
 # Flatten to 2d array, rescale, unflatten
 # Shape is (n_trajectories, n_timepoints, n_features)
-np_filtered_training_seqs_flatten = np.reshape(np_filtered_training_seqs, (6570, 15))
+np_filtered_training_seqs_flatten = np.reshape(np_filtered_training_seqs, ((len(all_training_sequences)-1)*15, 15))
 scaler = MinMaxScaler()
 np_filtered_training_seqs_flatten = scaler.fit_transform(np_filtered_training_seqs_flatten)
-np_filtered_training_seqs = np.reshape(np_filtered_training_seqs_flatten, (438, 15, 15))
+np_filtered_training_seqs = np.reshape(np_filtered_training_seqs_flatten, ((len(all_training_sequences)-1), 15, 15))
 
 # Now create Dataloader
 num_traj, num_timesteps, num_inputs, = np_filtered_training_seqs.shape
@@ -314,18 +282,20 @@ for i in range(num_traj):
     tensor_training_data[i, :, :] = torch.FloatTensor(np_filtered_training_seqs[i, :-1, :])
     tensor_label_data[i] = torch.FloatTensor(np_filtered_training_seqs[i, -1, :])
 
+print(tensor_training_data.shape)
+    
 #Params
 hsize=30
 layers=3
-batch_size=32
-num_epochs=800
+batch_size=438
+num_epochs=1800
 LR=0.001
 dropout=0.3
 ensemble_size = 1
 num_channels = 15
 num_timesteps = num_timesteps
 train_window = 14
-take = '_01'
+take = '_02'
 save_dir = 'lstm_shap_h'+str(hsize)+'_l'+str(layers)+'_b'+str(batch_size)+'_d'+str(dropout)+str(take)
 
 best_predictions = []
@@ -338,6 +308,7 @@ test_in = testing_seq[0:14, :].tolist()
 tensor_true_test_in = torch.FloatTensor(testing_seq[0:14, :]).to(device)
 tensor_true_test_data = torch.FloatTensor(testing_seq[14:, :]).to(device)
 
+#pdb.set_trace()
 
 for z in range(ensemble_size):
     print(f'H:{hsize} L:{layers} D:{dropout} E:{num_epochs} LR:{LR}')
@@ -350,7 +321,7 @@ for z in range(ensemble_size):
     ##pass loss to grad decsent
 
     #test permutations with avg as replacement
-    loss_function = nn.MSELoss(reduction='none').to(device)
+    loss_function = nn.BCELoss(reduction='none').to(device)
 
     #shap
     explainer, shap_vals = shap_val(best_model, trainingData, test_in)

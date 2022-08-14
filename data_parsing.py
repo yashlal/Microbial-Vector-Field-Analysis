@@ -8,6 +8,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 import torch
 import torch.nn as nn
+import pdb
 
 # Step 1: read the datafile
 # We need metadata for later (removing sequences with large time gaps, interpolation, prevent crossing patients)
@@ -69,7 +70,8 @@ def generate_training_and_testing_sequences(data_array):
     for ind in range(len(data_array)-14):
         seq = data_array[ind:ind+15, :]
         # metadata check (same patient # and year)
-        if all([x==seq[0, 0]] for x in seq[:, 0]) and (all([x==seq[0, 1]] for x in seq[:, 1])):
+        if all([x==seq[0, 0] for x in seq[:, 0]]) and (all([x==seq[0, 1] for x in seq[:, 1]])):
+            #print(seq[:,0], seq[0,0], all([x==seq[0, 0]] for x in seq[:, 0]))
             # check for contigous sequence
             if (seq[0, 2] == (seq[-1, 2]-14)):
                 training_seqs.append(seq)
@@ -79,7 +81,7 @@ def generate_training_and_testing_sequences(data_array):
     for ind2 in range(len(data_array)-27):
         seq = data_array[ind2:ind2+28, :]
         # metadata check (same patient # and year)
-        if all([x==seq[0, 0]] for x in seq[:, 0]) and (all([x==seq[0, 1]] for x in seq[:, 1])):
+        if all([x==seq[0, 0] for x in seq[:, 0]]) and (all([x==seq[0, 1] for x in seq[:, 1]])):
             x = seq[0,2]
             y = seq[-1,2]
             # check for contigous sequence
@@ -107,26 +109,24 @@ def setup_testing(training_seqs, testing_seqs, testing_traj_index):
 np.set_printoptions(threshold=sys.maxsize)
 
 if __name__=='__main__':
-    pass
     # running first function for data reading
-
-    # read_data("VMBData_clean.xlsx", 'np_data.pickle')
-
+    read_data("VMBData_clean.xlsx", 'np_data.pickle')
     # running second function for data modifs
 
-    # with open('np_data.pickle', 'rb') as f:
-    #     np_data_and_metadata = pickle.load(f)
-    # np_data_and_metadata = data_modifications(np_data_and_metadata)
-    #
-    # with open('np_data_modified.pickle','wb') as f:
-    #     pickle.dump(np_data_and_metadata, f)
+    with open('np_data.pickle', 'rb') as f:
+        np_data_and_metadata = pickle.load(f)
+    np_data_and_metadata = data_modifications(np_data_and_metadata)
+    
+    with open('np_data_modified.pickle','wb') as f:
+        pickle.dump(np_data_and_metadata, f)
 
     # running third function for training seqs
 
-    # with open('np_data_modified.pickle', 'rb') as f:
-    #     np_data_and_metadata = pickle.load(f)
-    # all_training_sequences, all_testing_sequences = generate_training_and_testing_sequences(np_data_and_metadata)
-    # p = [all_training_sequences, all_testing_sequences]
-    #
-    # with open('train_test_sequences.pickle','wb') as f:
-    #     pickle.dump(p, f)
+    with open('np_data_modified.pickle', 'rb') as f:
+        np_data_and_metadata = pickle.load(f)
+    all_training_sequences, all_testing_sequences = generate_training_and_testing_sequences(np_data_and_metadata)
+    p = [all_training_sequences, all_testing_sequences]
+    
+    with open('train_test_sequences.pickle','wb') as f:
+        pickle.dump(p, f)
+    pass
