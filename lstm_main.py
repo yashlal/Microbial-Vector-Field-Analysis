@@ -254,11 +254,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 with open('train_test_sequences.pickle','rb') as f:
     all_training_sequences, all_testing_sequences = pickle.load(f)
 
-print(len(all_training_sequences))
-    
 # Pick testing traj and remove training ones w ovrlap to avoid overfit
 testing_traj_ind = 0
 filtered_training_seqs, testing_seq = data_parsing.setup_testing(all_training_sequences, all_testing_sequences, testing_traj_ind)
+
+print("Training set:", len(filtered_training_seqs), "trajectories")
 
 # remove metadata cols
 np_filtered_training_seqs = np.array(filtered_training_seqs)[:, :, 3:]
@@ -266,10 +266,10 @@ testing_seq = np.array(testing_seq[:, 3:], dtype=np.float)
 
 # Flatten to 2d array, rescale, unflatten
 # Shape is (n_trajectories, n_timepoints, n_features)
-np_filtered_training_seqs_flatten = np.reshape(np_filtered_training_seqs, ((len(all_training_sequences)-1)*15, 15))
+np_filtered_training_seqs_flatten = np.reshape(np_filtered_training_seqs, ((len(filtered_training_seqs))*15, 15))
 scaler = MinMaxScaler()
 np_filtered_training_seqs_flatten = scaler.fit_transform(np_filtered_training_seqs_flatten)
-np_filtered_training_seqs = np.reshape(np_filtered_training_seqs_flatten, ((len(all_training_sequences)-1), 15, 15))
+np_filtered_training_seqs = np.reshape(np_filtered_training_seqs_flatten, ((len(filtered_training_seqs)), 15, 15))
 
 # Now create Dataloader
 num_traj, num_timesteps, num_inputs, = np_filtered_training_seqs.shape
@@ -283,11 +283,11 @@ for i in range(num_traj):
     tensor_label_data[i] = torch.FloatTensor(np_filtered_training_seqs[i, -1, :])
 
 print(tensor_training_data.shape)
-    
+
 #Params
 hsize=30
 layers=3
-batch_size=438
+batch_size=len(filtered_training_seqs)
 num_epochs=1800
 LR=0.001
 dropout=0.3
@@ -295,7 +295,7 @@ ensemble_size = 1
 num_channels = 15
 num_timesteps = num_timesteps
 train_window = 14
-take = '_02'
+take = '_01'
 save_dir = 'lstm_shap_h'+str(hsize)+'_l'+str(layers)+'_b'+str(batch_size)+'_d'+str(dropout)+str(take)
 
 best_predictions = []

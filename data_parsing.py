@@ -94,14 +94,19 @@ def generate_training_and_testing_sequences(data_array):
 # Only function to actually run on each run of NN (will be run in the lstm_main.py file)
 def setup_testing(training_seqs, testing_seqs, testing_traj_index):
     testing_seq = testing_seqs[testing_traj_index]
-
+    test_IDs = []
+    for i in range(len(testing_seq)):
+        temp = ''.join(testing_seq[i,0:2])
+        test_IDs.append(temp+str(testing_seq[i,2]))
     filtered_training_seqs = []
     for training_seq in training_seqs:
         flag = True
-        if (training_seq[0, 0]==testing_seq[0, 0]) and (training_seq[0, 1]==testing_seq[0, 1]):
-            if (training_seq[0, 2] <= testing_seq[0, 2]) and (training_seq[0, 2] <= (testing_seq[0, 2]+13)):
-                flag = False
-        if flag:
+        train_IDs = []
+        for i in range(len(training_seq)):
+            temp = ''.join(training_seq[i,0:2])
+            train_IDs.append(temp+str(training_seq[i,2]))
+        overlap = list(set(train_IDs).intersection(set(test_IDs)))
+        if len(overlap)==0:
             filtered_training_seqs.append(training_seq)
 
     return filtered_training_seqs, testing_seq
