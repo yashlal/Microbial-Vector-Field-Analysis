@@ -43,70 +43,6 @@ def create_inout_sequences3(iners_col, tw, p_labels):
 
     return train_inout_seq, test_seqs, (train_indices, test_indices)
 
-#needs to be made multidimensional - channel 0 = predictor
-def create_inout_sequences2(all_data, tw, p_labels):
-    train_inout_seq = []
-    train_indices = []
-    for i in range(len(all_data[0])-tw):
-        out_val = all_data[0][i+tw:i+tw+1]
-        check_l = p_labels[i:i+tw+1]
-        in_l = []
-        for j in range(i,i+tw):
-            timeslice = []
-            for k in range(len(all_data)):
-                timeslice.append(all_data[k][j])
-                #print(i,j,k,all_data[k][j],timeslice)
-            in_l.append(timeslice)
-            
-        if all([check_l[i]==check_l[0] for i in range(len(check_l))]):
-            if all([k1>=0 for k1 in all_data[0][i:i+tw]]) and all([k2>=0 for k2 in out_val]):
-                train_inout_seq.append((in_l, out_val))
-                train_indices.append(i+tw)
-
-    test_seqs = []
-    test_indices = []
-    for j in range(len(all_data[0])-2*tw):
-        check_l2 = p_labels[j:j+2*tw]
-        all_l2 = []
-        for i in range(j,j+2*tw):
-            timeslice = []
-            for k in range(1,len(all_data)):
-                timeslice.append(all_data[k][i])
-            all_l2.append(timeslice)
-        if all([k3>=0 for k3 in all_data[0][j:j+2*tw]]) and all([check_l2[q]==check_l2[0] for q in range(len(check_l2))]):    
-            test_seq = (all_l2[j:j+tw],all_l2[j+tw:j+2*tw])#hw:make multidimensional
-            test_seqs.append(test_seq)
-            test_indices.append(j+tw)
-
-    return train_inout_seq, test_seqs, (train_indices, test_indices)
-
-#needs to be made multidimensional
-def create_inout_sequences(iners_col, tw, p_labels):
-    train_inout_seq = []
-    train_indices = []
-    for i in range(len(iners_col)-tw):
-        in_l = iners_col[i:i+tw]
-        out_val = iners_col[i+tw:i+tw+1]
-
-        check_l = p_labels[i:i+tw+1]
-
-        if all([check_l[i]==check_l[0] for i in range(len(check_l))]):
-            if all([k1>=0 for k1 in in_l]) and all([k2>=0 for k2 in out_val]):
-                train_inout_seq.append((in_l, out_val))
-                train_indices.append(i+tw)
-
-    test_seqs = []
-    test_indices = []
-    for j in range(len(iners_col)-2*tw):
-        iners_l2 = iners_col[j:j+2*tw]
-        check_l2 = p_labels[j:j+2*tw]
-        if all([k3>=0 for k3 in iners_l2]) and all([check_l2[q]==check_l2[0] for q in range(len(check_l2))]):
-            test_seq = (iners_col[j:j+tw], iners_col[j+tw:j+2*tw])
-            test_seqs.append(test_seq)
-            test_indices.append(j+tw)
-
-    return train_inout_seq, test_seqs, (train_indices, test_indices)
-
 def reset_weights(m):
     for layer in m.children():
         if hasattr(layer, 'reset_parameters'):
@@ -167,28 +103,6 @@ def train1(model, train_dataloader, loss_function1, optimizer):
     avg_loss = sum_loss/len(trainingData)
     return avg_loss
 
-def one_loss(output,target):
-    loss = torch.mean((output-target)**2)
-    return loss
-
-def train2(model, train_data, optimizer, index):
-    model.train()
-    sum_loss = 0
-    for seq, labels in train_data:
-        seq = torch.FloatTensor(seq).to(device)
-        labels = torch.FloatTensor(labels).to(device)
-        model.hidden = (torch.zeros(layers, batch_size, model.hidden_layer_size).to(device),
-                        torch.zeros(layers, batch_size, model.hidden_layer_size).to(device))
-
-        y_pred = model(seq)[index]
-        single_loss = one_loss(y_pred, labels[index])
-        optimizer.zero_grad()
-        single_loss.backward()
-        optimizer.step()
-        sum_loss += single_loss.item()
-    avg_loss = float(sum_loss/len(train_data))
-    return avg_loss
-
 def test1(model_in, test_inputs, fut_pred):
     model_in.eval()
     new_test_inputs = test_inputs.copy()
@@ -207,54 +121,6 @@ def test1(model_in, test_inputs, fut_pred):
     #print("old: ", test_inputs)
     output = new_test_inputs[-fut_pred:]
     return torch.FloatTensor(output)
-
-def simavg(model_in, loss_function, test_in, fut_pred, data_avg):
-    test_result_list = []
-    avg = copy.deepcopy(data_avg)
-    test_in_local = copy.deepcopy(test_in)
-    #pdb.set_trace()
-    fut_pred_local = fut_pred
-    model_in.hidden = (torch.zeros(layers, batch_size, model_in.hidden_layer_size).to(device),
-                       torch.zeros(layers, batch_size, model_in.hidden_layer_size).to(device))
-    best_ap = test1(model_in,test_in_local,fut_pred_local).to(device)
-    for j in range(len(blastT_labels)):
-        test_in_local = copy.deepcopy(test_in)
-        model_in.hidden = (torch.zeros(layers, batch_size, model_in.hidden_layer_size).to(device),
-                           torch.zeros(layers, batch_size, model_in.hidden_layer_size).to(device))
-        for i in range(len(test_in_local)):
-            #continue
-            test_in_local[i][j] = avg[j]#current offending line
-        ap_test2 = test1(model_in,test_in_local,fut_pred_local).to(device)#was offending line before
-        mse_diff = loss_function(ap_test2, best_ap)
-        #mse_diff = loss_function(best_ap, best_ap)
-        multi_diff = torch.sum(mse_diff,dim=0) #dim=0-->shape[15]
-        row = multi_diff.tolist()
-        row2 = [y/z/14 for y, z in zip(row,blastT_avg)]
-        test_result_list.append(row2)
-    return test_result_list
-
-def simrand(model, loss_function, test_in, fut_pred):
-    test_result_list = []
-    test_in_local = copy.deepcopy(test_in)
-    best_ap = test1(model,test_in_local,fut_pred).to(device)
-    for j in range(len(blastT_labels)):
-        one_result = []
-        test_in_local = copy.deepcopy(test_in)
-        for k in range(100):
-            noise = np.random.normal(blastT_avg[j],blastT_stds[j],14)
-            test_in_local = copy.deepcopy(test_in)
-            for i in range(len(test_in_local)):
-                test_in_local[i][j] = blastT_avg[j]+noise[i]
-            ap_test2 = test1(model,test_in_local,fut_pred).to(device)
-            mse_diff = loss_function(ap_test2, best_ap)
-            multi_diff = torch.sum(mse_diff,dim=0) #dim=0-->shape[15]
-            row = multi_diff.tolist()
-            one_result.append(row)
-        one_array = np.array(one_result)
-        one_avg = np.average(one_array,axis=0)
-        row2 = [y/z/14 for y, z in zip(one_avg,blastT_avg)]
-        test_result_list.append(row2)
-    return test_result_list
 
 def simtime(model, loss_function, test_in, fut_pred):
     test_result_list = []
@@ -286,8 +152,12 @@ def full_train(num_channels,hsize,layers,dropout,batch_size,LR,num_epochs,train_
     for name, param in model.named_parameters():
         if 'bias' in name:
             nn.init.constant_(param,0.0)
+            start = int(len(param)/4)
+            end = int(len(param)/2)
+            param.data[start:end].fill_(1.) #initialize forget_gate to 1
         elif 'weight' in name:
-            nn.init.xavier_normal_(param)
+            #nn.init.xavier_normal_(param)
+            nn.init.orthogonal_(param)
 
     #starting index
     index = 13
@@ -352,6 +222,7 @@ def plot_lacto(test_in,true_data,best_prediction,label_text,save_dir):
     ylabel = 'Relative Abundance Run'
     ax1.set_ylabel(ylabel)
     ax1.plot(test_all[:,index:].tolist(), label=label_text[index:])
+    plt.gca().set_prop_cycle(None)
     for best_p in best_predictions:
         array_bestp = np.array(best_p.cpu())
         ax1.plot(range(14,28),array_bestp[:,index:], '--')
@@ -434,7 +305,6 @@ def discriminator():
     ##generate real set
     return d_loss
 
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 all_data = pd.read_excel("VMBData_clean.xlsx")
@@ -470,23 +340,12 @@ blastT_stds.reverse()
 #print(all_data)
 
 #rescale input data
-if(1):
-    x = np.array(blastT_nums)
-    if(1):
-        scaler = MinMaxScaler() #goes with nn.Sigmoid()
-        arr_norm = scaler.fit_transform(x)
-    if(0):
-        m = np.nanmean(x,axis=0,dtype=float,keepdims=True)
-        s = np.nanstd(x,axis=0,dtype=float,keepdims=True)
-        x -= m
-        x /= s*3
-        arr_norm = x
-    x2 = arr_norm.data.tolist()
-    print("Data Rescaled")
-if(0):
-    x2 = blastT_nums
-    print("Data NOT Rescaled")
-#pdb.set_trace()
+x = np.array(blastT_nums)
+scaler = MinMaxScaler() #goes with nn.Sigmoid()
+arr_norm = scaler.fit_transform(x)
+x2 = arr_norm.data.tolist()
+print("Data MinMax Rescaled")
+
 p_labels = all_data['meta_Participant'].values.tolist()
 
 train_window = 14
@@ -504,9 +363,6 @@ clean_train_inout_seq = []
 for seq_ind in range(len(train_inout_seq)):
     if indices_tuple[0][seq_ind] not in train_indices_to_remove:
         clean_train_inout_seq.append(train_inout_seq[seq_ind])
-
-#fullTrainingData = np.array(clean_train_inout_seq)[:, 0]
-#fullTestingData = np.array(clean_train_inout_seq)[:, 0]
 
 num_traj = len(clean_train_inout_seq)
 num_timesteps = len(clean_train_inout_seq[0][0])
@@ -530,21 +386,20 @@ tensor_true_test_data2 = tensor_true_test_data.detach().clone()
 #Params
 hsize=30
 layers=3
-batch_size=32 #always 1 because input isn't set up otherwise
-num_epochs=800
+batch_size=len(trainingData)
+num_epochs=1800
 LR=0.001
 dropout=0.3
 ensemble_size = 1
-take = '_07'
+take = '_00'
 save_dir = 'lstm_shap_h'+str(hsize)+'_l'+str(layers)+'_b'+str(batch_size)+'_d'+str(dropout)+str(take)
 
+#Make Data Loaders
 trainingData2 = TensorDataset(trainingData,labelData)
 train_dataloader = DataLoader(trainingData2,batch_size=batch_size,shuffle=True)
 testingData2 = TensorDataset(tensor_true_test_in,tensor_true_test_data)
 test_dataloader = DataLoader(testingData2,batch_size=1,shuffle=False)
 
-simavg_results = []
-simrand_results = []
 simtime_results = []
 best_predictions = []
 shap_results = []
@@ -562,18 +417,12 @@ for z in range(ensemble_size):
     
     #test permutations with avg as replacement
     loss_function = nn.MSELoss(reduction='none').to(device)
-    #results1 = simavg(best_model, loss_function, test_in, fut_pred, blastT_avg)
-    #simavg_results.append(results1)
-    #test avg + rand permutations
-    #results2 = simrand(best_model, loss_function, test_in, fut_pred)
-    #simrand_results.append(results2)
-    #test time replaced with avg values
     results3 = simtime(best_model, loss_function, test_in, fut_pred)
     simtime_results.append(results3)
     #shap
     explainer, shap_vals = shap_val(best_model, trainingData, test_in)
     shap_results.append(shap_vals)
-    pdb.set_trace()
+    #pdb.set_trace()
 
 #plot last example only
 os.mkdir(save_dir)
@@ -592,32 +441,6 @@ for i in range(len(blastT_labels)):
     path = os.path.join(save_dir,fn)
     plt.savefig(path)
 
-shap.plots.waterfall(shap_vals[0])
-    
-#plot simavg
-#array_simavg = np.array(simavg_results)
-#simavg_avg =  np.average(array_simavg,axis=0)
-#simavg_df = pd.DataFrame(simavg_avg,index=blastT_labels,columns=blastT_labels)
-
-#pdb.set_trace()
-
-#fign,axn = plt.subplots()
-#axn.set_title('Species avg')
-#axn = sns.heatmap(simavg_df,linewidth=0.5)#,norm=LogNorm())
-#plt.tight_layout()
-#plt.show(block=False)
-
-#plot simrand
-#array_simrand = np.array(simrand_results)
-#simrand_avg = np.average(array_simrand,axis=0)
-#simrand_df = pd.DataFrame(simrand_avg,index=blastT_labels,columns=blastT_labels)
-
-#figr,axr = plt.subplots()
-#axr.set_title('Species avg + rand')
-#axr = sns.heatmap(simrand_df, linewidth=0.5)
-#plt.tight_layout()
-#plt.show(block=False)
-
 #plot removing time points
 array_simtime = np.array(simtime_results)
 simtime_avg = np.average(array_simtime,axis=0)
@@ -627,6 +450,9 @@ figt,axt = plt.subplots()
 axt.set_title('Time avg')
 axt = sns.heatmap(simtime_df, linewidth=0.5)
 plt.tight_layout()
+fn = 'Time.png'
+path = os.path.join(save_dir,fn)
+plt.savefig(path)
 plt.show()
 
 
