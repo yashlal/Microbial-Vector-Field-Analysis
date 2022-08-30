@@ -129,7 +129,7 @@ def full_train(num_channels,hsize,layers,dropout,batch_size,LR,num_epochs,train_
             nn.init.constant_(param,0.0)
             start = int(len(param)/4)
             end = int(len(param)/2)
-            param.data[start:end].fill_(1.) #initialize forget_gate to 
+            param.data[start:end].fill_(1.) #initialize forget_gate to
         elif 'weight' in name:
             nn.init.orthogonal_(param)
 
@@ -179,17 +179,16 @@ def plot_init_select(true_data,best_p,label_text,index):
     return
 
 def plot_lacto(test_in,true_data,best_prediction,label_text,save_dir):
-    index = 12
     test_all = torch.cat((test_in,tensor_true_test_data))
     fig1, ax1 = plt.subplots()
     title = 'Best Fits'
     ax1.set_title(title)
     ylabel = 'Relative Abundance Run'
     ax1.set_ylabel(ylabel)
-    ax1.plot(test_all[:,index:].tolist(), label=label_text[index:])
+    ax1.plot(test_all[:,0:3].tolist(), label=label_text[0:3])
     for best_p in best_predictions:
         array_bestp = np.array(best_p.cpu())
-        ax1.plot(range(14,28),array_bestp[:,index:], '--')
+        ax1.plot(range(14,28),array_bestp[:,0:3], '--')
     ax1.legend()
     fn = '3_Lacto_species.png'
     path = os.path.join(save_dir,fn)
@@ -211,9 +210,10 @@ def plot_others(test_in,tensor_true_test_data,best_prediction,blastT_labels,save
 
     fig,axs = plt.subplots(3,4)
     test_all = torch.cat((test_in,tensor_true_test_data))
+    blastT_labels_other = blastT_labels[3:]
     for i in range(3):
         for j in range(4):
-            axs[i,j].set_title(blastT_labels[4*i+j])
+            axs[i,j].set_title(blastT_labels_other[4*i+j])
             axs[i,j].plot(test_all[:,4*i+j].tolist())
             axs[i,j].plot(range(14,28),best_prediction[:,4*i+j].tolist(), '--')
 
@@ -288,7 +288,7 @@ print(tensor_training_data.shape)
 hsize=30
 layers=3
 batch_size=len(filtered_training_seqs)
-num_epochs=1800
+num_epochs=350
 LR=0.001
 dropout=0.3
 ensemble_size = 1
