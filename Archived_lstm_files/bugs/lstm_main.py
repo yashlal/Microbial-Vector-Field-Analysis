@@ -16,7 +16,7 @@ from sklearn.preprocessing import StandardScaler
 import shap
 import os
 from torch.utils.data import DataLoader,TensorDataset
-import data_parsing
+import utils.data_parsing as data_parsing
 import pickle
 import pdb
 
@@ -295,7 +295,7 @@ ensemble_size = 1
 num_channels = 15
 num_timesteps = num_timesteps
 train_window = 14
-take = '_01'
+take = '_02'
 save_dir = 'lstm_shap_h'+str(hsize)+'_l'+str(layers)+'_b'+str(batch_size)+'_d'+str(dropout)+str(take)
 
 best_predictions = []
