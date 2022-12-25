@@ -5,12 +5,12 @@ This project uses an LSTM RNN approach to predict microbial profiles from prior 
 
 which has been downloaded and cleaned-up in file "VMBData_clean.xlsx" (by Yash Lal). This is a work-in-progress and the current working version is lstm_multichannel6.py. The hyperparmeters need to be changed in this file and the results give best testing trajectory from all runs in the ensemble:
 
-<img src="LSTM_plots/h30_l3/Ensemble_tw14days_h30_l3_d0.3_e20_01.png">
+<img src="Archived_lstm_files/LSTM_plots/h30_l3/Ensemble_tw14days_h30_l3_d0.3_e20_01.png">
 
 The log-error after ablating (setting to average) different data features:
 
-<img src="LSTM_plots/h30_l3/Ensemble_tw14days_h30_l3_d0.3_e20_01_simavg.png">
+<img src="Archived_lstm_files/LSTM_plots/h30_l3/Ensemble_tw14days_h30_l3_d0.3_e20_01_simavg.png">
 
 The log-error after ablating data from different time points:
 
-<img src="LSTM_plots/h30_l3/Ensemble_tw14days_h30_l3_d0.3_e20_01_simtime.png">
+<img src="Archived_lstm_files/LSTM_plots/h30_l3/Ensemble_tw14days_h30_l3_d0.3_e20_01_simtime.png">
