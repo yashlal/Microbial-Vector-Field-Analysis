@@ -12,7 +12,7 @@ class LSTM(nn.Module):
         self.SM = nn.Sigmoid()
 
     def forward(self, input_seq):
-        lstm_out, _ = self.lstm(input_seq.view(-1,len(input_seq[0]),len(input_seq[0][0])), self.hidden)
+        lstm_out, self.hidden = self.lstm(input_seq.view(-1,len(input_seq[0]),len(input_seq[0][0])), self.hidden)
         pred = self.linear(lstm_out.view(-1,len(lstm_out[0]),len(lstm_out[0][0])))[:,-1]
         pred = self.SM(pred)
         return pred
