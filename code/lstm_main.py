@@ -16,7 +16,6 @@ import pickle
 import data_parsing
 import lstm_funcs
 
-
 # species names and device setup
 blastT_labels = ['L. crispatus',
  'L. iners',
@@ -37,7 +36,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print('Device:', device)
 
 #Loading training data
-with open('../data/train_test_sequences.pickle','rb') as f:
+with open('data/train_test_sequences.pickle','rb') as f:
     all_training_sequences, all_testing_sequences = pickle.load(f)
 
 # Pick testing traj and remove training ones w overlap to avoid overfit

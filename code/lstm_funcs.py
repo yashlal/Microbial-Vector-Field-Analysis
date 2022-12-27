@@ -27,7 +27,7 @@ def train_model(model, train_dataloader, train_loss, optimizer, device):
     batch_size = list(train_dataloader)[0][0].shape[0]
     # Number of items in dataloader
     n_batches = len(train_dataloader)
-
+    c = 0
     # Iter through dataloader
     for i in range(0, n_batches):
         seq,labels = next(iter(train_dataloader))
@@ -37,8 +37,9 @@ def train_model(model, train_dataloader, train_loss, optimizer, device):
         labels=labels.float().to(device)
 
         # Check for correct batch size
-        # TO:DO SAVE THE 29 WASTED SEQUENCES!
+        # FIX: ERROR CALCULATIONS 
         if(len(seq)==batch_size):
+            c += 1
             # Get num of LSTM layers
             n_layers = model.num_layers
 
@@ -52,7 +53,7 @@ def train_model(model, train_dataloader, train_loss, optimizer, device):
             optimizer.step()
             sum_loss += single_loss.item()
 
-    avg_loss = sum_loss / (n_batches*batch_size)
+    avg_loss = sum_loss / (c)
     return avg_loss
 
 def test_model(model, test_inputs, fut_pred, train_window, device):
