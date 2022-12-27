@@ -52,7 +52,7 @@ def train_model(model, train_dataloader, train_loss, optimizer, device):
             optimizer.step()
             sum_loss += single_loss.item()
 
-    avg_loss = sum_loss / n_batches
+    avg_loss = sum_loss / (n_batches*batch_size)
     return avg_loss
 
 def test_model(model, test_inputs, fut_pred, train_window, device):
@@ -159,7 +159,7 @@ def plot_best_fit(true_data, prediction, model_pred_color, true_data_color, idx,
         cidx += 1
     ax2.tick_params('both', length=10, width=3)
     ax2.legend(fontsize=13, loc='lower left')
-    plt.tight_layout()
+    # plt.tight_layout()
     if (save_dir is not None) and save:
         plt.savefig('LSTMFit.png')
-    plt.show(block=False)
+    plt.show()

@@ -57,7 +57,7 @@ for z in range(ensemble_size):
     hparamdict = {'hsize': 51,
    'layers': 3,
    'batch_size': 32,
-   'num_epochs': 400,
+   'num_epochs': 350,
    'lr': 0.0001,
    'dropout': 0.6}
 
@@ -83,5 +83,5 @@ for z in range(ensemble_size):
 base_data_color = ['#2167E2', '#FF9700', '#148731']
 pred_color = ['#45BBFF', '#FFD136', '#8DEC8C']
 best_fit_idx = [0, 1, 3]
-full_test_data = torch.concat((torch.clone(tensor_true_test_in),torch.clone(tensor_true_test_data)))
+full_test_data = torch.cat((torch.clone(tensor_true_test_in),torch.clone(tensor_true_test_data)))
 lstm_funcs.plot_best_fit(full_test_data, best_prediction, pred_color, base_data_color, best_fit_idx, blastT_labels, False, None, full_test_data)
