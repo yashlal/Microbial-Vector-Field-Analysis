@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 
-class LSTM(nn.Module):
+class MM_LSTM_CLASS(nn.Module):
     def __init__(self, input_size=1, hidden_layer_size=100, num_layers=1, dropout=0.5, batch_size=1, output_size=1):
-        super(LSTM, self).__init__()
+        super(MM_LSTM_CLASS, self).__init__()
         self.hidden_layer_size = hidden_layer_size
         self.num_layers = num_layers
         self.batch_size = batch_size
@@ -16,8 +16,3 @@ class LSTM(nn.Module):
         pred = self.linear(lstm_out.view(-1,len(lstm_out[0]),len(lstm_out[0][0])))[:,-1]
         pred = self.SM(pred)
         return pred
-        
-    def reset_weights(self):
-        for layer in self.children():
-            if hasattr(layer, 'reset_parameters'):
-                layer.reset_parameters()

@@ -10,7 +10,12 @@ import copy
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader,TensorDataset
-from models import LSTM
+from MM_LSTM import MM_LSTM_CLASS
+
+def reset_weights(m):
+        for layer in m.children():
+            if hasattr(layer, 'reset_parameters'):
+                layer.reset_parameters()
 
 def train_model(model, train_dataloader, train_loss, optimizer, device):
 
@@ -82,8 +87,8 @@ def full_train(num_channels, hsize, layers, dropout, batch_size, LR, num_epochs,
     test_in_local = copy.deepcopy(test_in)
 
     # model and optimizer setup
-    model = LSTM(input_size=num_channels,hidden_layer_size=hsize,num_layers=layers,output_size=num_channels,dropout=dropout,batch_size=batch_size).to(device)
-    model.reset_weights()
+    model = MM_LSTM_CLASS(input_size=num_channels,hidden_layer_size=hsize,num_layers=layers,output_size=num_channels,dropout=dropout,batch_size=batch_size).to(device)
+    model.apply(reset_weights)
     optimizer = torch.optim.Adam(model.parameters(),lr=LR)
     optimizer.state = collections.defaultdict(dict)
     fut_pred = len(tensor_true_test_data)
@@ -103,11 +108,11 @@ def full_train(num_channels, hsize, layers, dropout, batch_size, LR, num_epochs,
     loss_function1 = nn.BCELoss().to(device)
 
     for i in range(num_epochs):
-        avg_loss = train_model(model, train_dataloader, loss_function1, optimizer)
+        avg_loss = train_model(model, train_dataloader, loss_function1, optimizer, device=device)
         #Obtain testing loss every 25 epochs and compare to find the best model
         if i%25 == 1 or i==num_epochs-1:
 
-            ap = test_model(model, test_in_local, fut_pred).view(-1,num_channels).to(device)
+            ap = test_model(model, test_in_local, fut_pred, train_window=14, device=device).view(-1,num_channels).to(device)
             test_loss = loss_function1(ap, tensor_true_test_data)
             print(f'Epoch:{i}       TestLoss1:{test_loss}      TrainLoss:{avg_loss}')
 
@@ -115,7 +120,7 @@ def full_train(num_channels, hsize, layers, dropout, batch_size, LR, num_epochs,
                 best_loss = test_loss.item()
                 best_i = i
                 best_ap = ap.detach().clone()
-                model_clone = LSTM(input_size=num_channels,hidden_layer_size=hsize,num_layers=layers,output_size=num_channels,dropout=dropout,batch_size=batch_size).to(device)
+                model_clone = MM_LSTM_CLASS(input_size=num_channels,hidden_layer_size=hsize,num_layers=layers,output_size=num_channels,dropout=dropout,batch_size=batch_size).to(device)
                 model_clone.load_state_dict(copy.deepcopy(model.state_dict()))
 
     best_prediction = best_ap#.tolist()
@@ -125,8 +130,15 @@ def full_train(num_channels, hsize, layers, dropout, batch_size, LR, num_epochs,
 
     return best_prediction, best_i, model_clone, best_loss
 
-def plot_best_fit(prediction, model_pred_color, true_data_color, idx, labels, save, save_dir):
-    # Designing plot params
+def plot_best_fit(true_data, prediction, model_pred_color, true_data_color, idx, labels, save, save_dir, full_test_data):
+    #idx is a list of the index of the species
+    #idx of the prediction and labels should correspond
+    #prediction should be the output of the testing scheme
+    #model_pred_color and true_data_color are both lists that should correspond to the color you want for each species plotted
+    #true_data should be shape (timesteps, species)
+    assert len(model_pred_color) == len(true_data_color) == len(idx), 'Make sure the lists of colors and indexes are the same size'
+    assert len(true_data[0]) == len(labels), 'Make sure the size of the features and labels are the same shape'
+    plt.close()
     plt.rc('xtick', labelsize=15)
     plt.rc('ytick', labelsize=15)
     plt.rcParams['axes.linewidth'] = 3
@@ -139,18 +151,14 @@ def plot_best_fit(prediction, model_pred_color, true_data_color, idx, labels, sa
     ylabel = 'Relative Abundance'
     ax2.set_ylabel(ylabel, fontsize=25)
     ax2.set_xlabel('Time Step', fontsize=25)
-
-    # Add on the species we want to plot
     cidx = 0
     for index in idx:
-        ax2.plot(full_test_data[:,index].tolist(), label=labels[cidx], lw=3, c=true_data_color[cidx])
+        ax2.plot(full_test_data[:,index].tolist(), label=labels[cidx], lw=3, c=model_pred_color[cidx])
         array_bestp1 = np.array(best_pred.cpu())
-        ax2.plot(range(14, 28), array_bestp1[:,index], label=labels[cidx] + pred_labels, ls = ':', lw=4, c=model_pred_color[cidx])
+        ax2.plot(range(14, 28), array_bestp1[:,index], label=labels[cidx] + pred_labels, ls = ':', lw=4, c=true_data_color[cidx])
         cidx += 1
-        
-    # More plotting params
     ax2.tick_params('both', length=10, width=3)
-    ax2.legend(fontsize=13, loc='best')
+    ax2.legend(fontsize=13, loc='lower left')
     plt.tight_layout()
     if (save_dir is not None) and save:
         plt.savefig('LSTMFit.png')

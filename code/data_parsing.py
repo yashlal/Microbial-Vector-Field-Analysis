@@ -94,8 +94,8 @@ def generate_training_and_testing_sequences(data_array):
 
 # Step 4: Pick testing sequence and throw out training sequences with overlap
 # Only function to actually run on each run of NN (will be run in the lstm_main.py file)
-# Also applies MinMax scaler and sets up data in tensorized format (dataloader for training)
-def setup_testing(training_seqs, testing_seqs, testing_traj_index, batch_size, device):
+# Also applies MinMax scaler and sets up data in tensorized format
+def setup_testing(training_seqs, testing_seqs, testing_traj_index, device):
     testing_seq = testing_seqs[testing_traj_index]
     test_IDs = []
     for i in range(len(testing_seq)):
@@ -139,15 +139,13 @@ def setup_testing(training_seqs, testing_seqs, testing_traj_index, batch_size, d
     print('Training Size', tensor_training_data.shape)
     print('Training Label Size:', tensor_label_data.shape)
 
+    # Make dataloader and testing tensors
     trainingData = TensorDataset(tensor_training_data, tensor_label_data)
     test_in = testing_seq[0:14, :].tolist()
     tensor_true_test_in = torch.FloatTensor(testing_seq[0:14, :]).to(device)
     tensor_true_test_data = torch.FloatTensor(testing_seq[14:, :]).to(device)
-    train_dataloader = DataLoader(trainingData, batch_size=batch_size, shuffle=True)
 
-    return train_dataloader, test_in, tensor_true_test_in, tensor_true_test_data
-
-np.set_printoptions(threshold=sys.maxsize)
+    return trainingData, test_in, tensor_true_test_in, tensor_true_test_data
 
 if __name__=='__main__':
     # # running first function for data reading
