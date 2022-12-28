@@ -36,8 +36,6 @@ def train_model(model, train_dataloader, train_loss, optimizer, device):
         seq=seq.float().to(device)
         labels=labels.float().to(device)
 
-        # Check for correct batch size
-        # FIX: ERROR CALCULATIONS 
         batch_size = len(seq)
         c += 1
         # Get num of LSTM layers
