@@ -24,7 +24,7 @@ def train_model(model, train_dataloader, train_loss, optimizer, device):
     sum_loss = 0
 
     # Use first batch to get batch size
-    batch_size = list(train_dataloader)[0][0].shape[0]
+    # batch_size = list(train_dataloader)[0][0].shape[0]
     # Number of items in dataloader
     n_batches = len(train_dataloader)
     c = 0
@@ -38,20 +38,20 @@ def train_model(model, train_dataloader, train_loss, optimizer, device):
 
         # Check for correct batch size
         # FIX: ERROR CALCULATIONS 
-        if(len(seq)==batch_size):
-            c += 1
-            # Get num of LSTM layers
-            n_layers = model.num_layers
+        batch_size = len(seq)
+        c += 1
+        # Get num of LSTM layers
+        n_layers = model.num_layers
 
-            # Training loop
-            model.hidden = (torch.zeros(n_layers, batch_size, model.hidden_layer_size).to(device),
-                            torch.zeros(n_layers, batch_size, model.hidden_layer_size).to(device))
-            y_pred = model(seq)
-            single_loss = train_loss(y_pred, labels)
-            optimizer.zero_grad()
-            single_loss.backward()
-            optimizer.step()
-            sum_loss += single_loss.item()
+        # Training loop
+        model.hidden = (torch.zeros(n_layers, batch_size, model.hidden_layer_size).to(device),
+                        torch.zeros(n_layers, batch_size, model.hidden_layer_size).to(device))
+        y_pred = model(seq)
+        single_loss = train_loss(y_pred, labels)
+        optimizer.zero_grad()
+        single_loss.backward()
+        optimizer.step()
+        sum_loss += single_loss.item()
 
     avg_loss = sum_loss / (c)
     return avg_loss
