@@ -33,7 +33,7 @@ def test_wrapper(ind):
     num_channels = 15
     big_arr = []
     for z in range(ensemble_size):
-        
+        print((z+1, ind))
         hparamdict = {'hsize': 51,
         'layers': 3,
         'batch_size': 32,
