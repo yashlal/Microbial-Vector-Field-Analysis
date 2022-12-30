@@ -31,6 +31,7 @@ def test_wrapper(ind):
 
     ensemble_size = 2 #Number of restarts
     num_channels = 15
+    big_arr = []
     for z in range(ensemble_size):
         
         hparamdict = {'hsize': 51,
@@ -54,7 +55,8 @@ def test_wrapper(ind):
                                             num_epochs,train_dataloader,test_in,
                                             tensor_true_test_data, device=device)
 
-        return((z+1, ind, loss_arr))
+        big_arr.append((z+1, ind, loss_arr))
+    return big_arr
 
 if __name__=='__main__':
     pool = Pool(processes=5)
