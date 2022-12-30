@@ -129,6 +129,43 @@ def full_train(num_channels, hsize, layers, dropout, batch_size, LR, num_epochs,
 
     return best_prediction, best_i, model_clone, best_loss
 
+# This function is used for creating a testing batch for ensemble lossing
+def all_loss_train(num_channels, hsize, layers, dropout, batch_size, LR, num_epochs, train_dataloader, test_in, tensor_true_test_data, device):
+    print(f'hsize:{hsize}       layers:{layers}       num_epochs:{num_epochs}       dropout:{dropout}      batch_size:{batch_size}       lr:{LR}')
+    test_in_local = copy.deepcopy(test_in)
+
+    # model and optimizer setup
+    model = MM_LSTM_CLASS(input_size=num_channels,hidden_layer_size=hsize,num_layers=layers,output_size=num_channels,dropout=dropout,batch_size=batch_size).to(device)
+    model.apply(reset_weights)
+    optimizer = torch.optim.Adam(model.parameters(),lr=LR)
+    optimizer.state = collections.defaultdict(dict)
+    fut_pred = len(tensor_true_test_data)
+
+    # Param inits
+    # Biases are zero, weights are orthogonal
+    for name, param in model.named_parameters():
+        if 'bias' in name:
+            nn.init.constant_(param,0.0)
+            start = int(len(param)/4)
+            end = int(len(param)/2)
+            param.data[start:end].fill_(1.)
+        elif 'weight' in name:
+            nn.init.orthogonal_(param)
+
+    loss_function1 = nn.BCELoss().to(device)
+    all_test_loss = []
+    for i in range(num_epochs):
+        avg_loss = train_model(model, train_dataloader, loss_function1, optimizer, device=device)
+        if i%25 == 1 or i==num_epochs-1:
+            ap = test_model(model, test_in_local, fut_pred, train_window=14, device=device).view(-1,num_channels).to(device)
+            test_loss = loss_function1(ap, tensor_true_test_data)
+            all_test_loss.append((i, test_loss.item()))
+
+    del loss_function1, optimizer, model
+    torch.cuda.empty_cache()
+
+    return all_test_loss
+
 def plot_best_fit(true_data, prediction, model_pred_color, true_data_color, idx, labels, save, save_dir, full_test_data):
     #idx is a list of the index of the species
     #idx of the prediction and labels should correspond
