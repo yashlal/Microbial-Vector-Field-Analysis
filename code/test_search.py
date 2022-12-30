@@ -15,7 +15,7 @@ import matplotlib.cm as cm
 import pickle
 import data_parsing
 import lstm_funcs
-from multiprocessing import Pool
+import multiprocessing
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #Loading training data
@@ -56,11 +56,10 @@ def test_wrapper(ind):
                                             tensor_true_test_data, device=device)
 
         big_arr.append((z+1, ind, loss_arr))
-    return big_arr
+    with open(f'test_saves/{ind}.pickle') as f:
+        pickle.dump(big_arr, f)
+        print(f"Saved {ind}")
 
 if __name__=='__main__':
-    pool = Pool(processes=5)
-    out = pool.map(test_wrapper, range(0,187))
-
-    with open('187_tests.pickle') as f:
-        pickle.dump(out, f)
+    with multiprocessing.get_context('spawn').Pool() as pool:
+        pool.map(test_wrapper, range(0,187))
