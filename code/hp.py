@@ -17,6 +17,19 @@ import random
 import itertools
 from tqdm import tqdm
 
+# seeded 10 test trajs for reprod.
+random.seed(0)
+test_inds = list(sorted(random.sample(range(187), 10)))
+print(test_inds)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+#Loading training data
+with open('data/train_test_sequences.pickle','rb') as f:
+    all_training_sequences, all_testing_sequences = pickle.load(f)
+
+search_space = list(itertools.product([5,10,20,50,100],[1,2,3,5],[0.1, 0.3, 0.5, 0.7], [64, 32, 16, 4, 1], [0.01, 0.001, 0.0001]))
+
 def hp_wrapper(config):
     hidden_layer_size = config[0]
     num_layers = config[1]
@@ -42,19 +55,6 @@ def hp_wrapper(config):
     return (config, avg_ensemble_loss)
 
 if __name__=='__main__':
-    # seeded 10 test trajs for reprod.
-    random.seed(0)
-    test_inds = list(sorted(random.sample(range(187), 10)))
-    print(test_inds)
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    #Loading training data
-    with open('data/train_test_sequences.pickle','rb') as f:
-        all_training_sequences, all_testing_sequences = pickle.load(f)
-
-    search_space = list(itertools.product([5,10,20,50,100],[1,2,3,5],[0.1, 0.3, 0.5, 0.7], [64, 32, 16, 4, 1], [0.01, 0.001, 0.0001]))
-
     with mp.get_context('spawn').Pool() as pool:
         l = pool.map(hp_wrapper, search_space)
     with open('hp_save.pickle', 'wb') as f:
