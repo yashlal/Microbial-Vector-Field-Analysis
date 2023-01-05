@@ -136,8 +136,8 @@ def setup_testing(training_seqs, testing_seqs, testing_traj_index, device):
         tensor_training_data[i, :, :] = torch.FloatTensor(np_filtered_training_seqs[i, :-1, :])
         tensor_label_data[i] = torch.FloatTensor(np_filtered_training_seqs[i, -1, :])
 
-    # print('Training Size', tensor_training_data.shape)
-    # print('Training Label Size:', tensor_label_data.shape)
+    print('Training Size', tensor_training_data.shape)
+    print('Training Label Size:', tensor_label_data.shape)
 
     # Make dataloader and testing tensors
     trainingData = TensorDataset(tensor_training_data, tensor_label_data)

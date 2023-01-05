@@ -53,7 +53,7 @@ def test_wrapper(ind):
         train_dataloader = DataLoader(trainingData2, batch_size=batch_size, shuffle=True)
         loss_arr = lstm_funcs.all_loss_train(num_channels,hsize,layers,dropout,batch_size,LR,
                                             num_epochs,train_dataloader,test_in,
-                                            tensor_true_test_data, device=device)
+                                            tensor_true_test_data, device=device, return_best=False)
 
         big_arr.append((z+1, ind, loss_arr))
     with open(f'test_saves/{ind}.pickle') as f:
