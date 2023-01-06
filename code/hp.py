@@ -52,11 +52,14 @@ def hp_wrapper(config):
         total_ensemble_loss += ensemble_indiv_loss
     
     avg_ensemble_loss = total_ensemble_loss / n_ensembles
-    return (config, avg_ensemble_loss)
+    pickle_obj = (config, avg_ensemble_loss)
+    f_path = f"hp_saves/{hidden_layer_size}_{num_layers}_{dropout}_{batch_size}_{LR}.pickle"
+    with open(f_path, 'wb') as f:
+        pickle.dump(pickle_obj, f)
 
 if __name__=='__main__':
-    with mp.get_context('spawn').Pool() as pool:
-        l = pool.map(hp_wrapper, search_space)
-    with open('hp_save.pickle', 'wb') as f:
-        pickle.dump(l ,f)
+    mp.set_start_method('spawn')
+    with mp.Pool(processes=12) as pool:
+        pool.map(hp_wrapper, search_space[0:12])
+
     
