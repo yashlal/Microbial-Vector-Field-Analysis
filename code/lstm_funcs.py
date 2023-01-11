@@ -175,8 +175,8 @@ def plot_best_fit(true_data, prediction, model_pred_color, true_data_color, idx,
     #prediction should be the output of the testing scheme
     #model_pred_color and true_data_color are both lists that should correspond to the color you want for each species plotted
     #true_data should be shape (timesteps, species)
-    assert len(model_pred_color) == len(true_data_color) == len(idx), 'Make sure the lists of colors and indexes are the same size'
-    assert len(true_data[0]) == len(labels), 'Make sure the size of the features and labels are the same shape'
+    # assert len(model_pred_color) == len(true_data_color) == len(idx), 'Make sure the lists of colors and indexes are the same size'
+    # assert len(true_data[0]) == len(labels), 'Make sure the size of the features and labels are the same shape'
     plt.close()
     plt.rc('xtick', labelsize=15)
     plt.rc('ytick', labelsize=15)
@@ -192,12 +192,12 @@ def plot_best_fit(true_data, prediction, model_pred_color, true_data_color, idx,
     ax2.set_xlabel('Time Step', fontsize=25)
     cidx = 0
     for index in idx:
-        ax2.plot(full_test_data[:,index].tolist(), label=labels[cidx], lw=3, c=model_pred_color[cidx])
+        ax2.plot(full_test_data[:,index].tolist(), label=labels[index], lw=3, color=true_data_color[index])
         array_bestp1 = np.array(best_pred.cpu())
-        ax2.plot(range(14, 28), array_bestp1[:,index], label=labels[cidx] + pred_labels, ls = ':', lw=4, c=true_data_color[cidx])
+        ax2.plot(range(14, 28), array_bestp1[:,index], label=labels[index] + pred_labels, ls = ':', lw=4, color=model_pred_color[index])
         cidx += 1
     ax2.tick_params('both', length=10, width=3)
-    ax2.legend(fontsize=13, loc='lower left')
+    ax2.legend(fontsize=8, loc='best')
     # plt.tight_layout()
     if (save_dir is not None) and save:
         plt.savefig('LSTMFit.png')

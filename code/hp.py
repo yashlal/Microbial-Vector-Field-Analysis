@@ -50,16 +50,18 @@ def hp_wrapper(config):
         train_dataloader = DataLoader(trainingData2, batch_size=batch_size, shuffle=True)
         best_epoch, ensemble_indiv_loss = lstm_funcs.all_loss_train(num_channels=15, hsize=hidden_layer_size, layers=num_layers, dropout=dropout, batch_size=batch_size, LR=LR, num_epochs=1000, train_dataloader=train_dataloader, test_in=test_in, tensor_true_test_data=tensor_true_test_data, device=device, return_best=True)
         total_ensemble_loss += ensemble_indiv_loss
+        print(ensemble_indiv_loss)
     
     avg_ensemble_loss = total_ensemble_loss / n_ensembles
     pickle_obj = (config, avg_ensemble_loss)
-    f_path = f"hp_saves/{hidden_layer_size}_{num_layers}_{dropout}_{batch_size}_{LR}.pickle"
-    with open(f_path, 'wb') as f:
-        pickle.dump(pickle_obj, f)
+    # f_path = f"hp_saves/{hidden_layer_size}_{num_layers}_{dropout}_{batch_size}_{LR}.pickle"
+    # with open(f_path, 'wb') as f:
+    #     pickle.dump(pickle_obj, f)
 
 if __name__=='__main__':
-    mp.set_start_method('spawn')
-    with mp.Pool(processes=12) as pool:
-        pool.map(hp_wrapper, search_space[0:12])
-
+    # mp.set_start_method('spawn')
+    # with mp.Pool(processes=12) as pool:
+    #     pool.map(hp_wrapper, search_space[0:12])
+    one_config = [20, 1, 0.1, 32, 0.01]
+    hp_wrapper(one_config)
     

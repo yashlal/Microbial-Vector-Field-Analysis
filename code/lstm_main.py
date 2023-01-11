@@ -41,7 +41,7 @@ with open('data/train_test_sequences.pickle','rb') as f:
 
 # Pick testing traj and remove training ones w overlap to avoid overfit
 # Also do scaling and tensor stuff (see data_parsing)
-testing_traj_ind = 0
+testing_traj_ind = 130
 batch_size = 32
 trainingData2, test_in, tensor_true_test_in, tensor_true_test_data = data_parsing.setup_testing(all_training_sequences, all_testing_sequences, testing_traj_ind, device=device)
 
@@ -53,12 +53,12 @@ train_window = 14
 total_tloss = 0
 for z in range(ensemble_size):
     
-    hparamdict = {'hsize': 51,
-   'layers': 3,
+    hparamdict = {'hsize': 20,
+   'layers': 1,
    'batch_size': 32,
-   'num_epochs': 350,
-   'lr': 0.0001,
-   'dropout': 0.6}
+   'num_epochs': 1000,
+   'lr': 0.01,
+   'dropout': 0.1}
 
     hsize = hparamdict['hsize']
     layers = hparamdict['layers']
@@ -79,8 +79,8 @@ for z in range(ensemble_size):
         avg_tloss = total_tloss/(z+1)
         print('Average Test Loss:', avg_tloss)
 
-base_data_color = ['#2167E2', '#FF9700', '#148731']
-pred_color = ['#45BBFF', '#FFD136', '#8DEC8C']
-best_fit_idx = [0, 1, 3]
+base_data_color = ['black', 'red', 'orange', 'green', 'blue', 'gold', 'purple', 'pink', 'grey', 'turquoise', 'cyan', 'crimson', 'indigo', 'olive', 'saddlebrown']
+pred_color = base_data_color
+best_fit_idx = list(range(4))
 full_test_data = torch.cat((torch.clone(tensor_true_test_in),torch.clone(tensor_true_test_data)))
 lstm_funcs.plot_best_fit(full_test_data, best_prediction, pred_color, base_data_color, best_fit_idx, blastT_labels, False, None, full_test_data)

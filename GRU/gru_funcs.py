@@ -129,7 +129,7 @@ def full_train(num_channels, hsize, layers, dropout, batch_size, LR, num_epochs,
     return best_prediction, best_i, model_clone, best_loss
 
 # This function is used for creating a testing batch for ensemble lossing
-def all_loss_train(num_channels, hsize, layers, dropout, batch_size, LR, num_epochs, train_dataloader, test_in, tensor_true_test_data, device):
+def all_loss_train(num_channels, hsize, layers, dropout, batch_size, LR, num_epochs, train_dataloader, test_in, tensor_true_test_data, device, return_best=False):
     print(f'hsize:{hsize}       layers:{layers}       num_epochs:{num_epochs}       dropout:{dropout}      batch_size:{batch_size}       lr:{LR}')
     test_in_local = copy.deepcopy(test_in)
 
@@ -163,7 +163,11 @@ def all_loss_train(num_channels, hsize, layers, dropout, batch_size, LR, num_epo
     del loss_function1, optimizer, model
     torch.cuda.empty_cache()
 
-    return all_test_loss
+    if return_best:
+        all_test_loss.sort(key=lambda x:x[1])
+        return all_test_loss[0]
+    else:
+        return all_test_loss
 
 def plot_best_fit(true_data, prediction, model_pred_color, true_data_color, idx, labels, save, save_dir, full_test_data):
     #idx is a list of the index of the species
