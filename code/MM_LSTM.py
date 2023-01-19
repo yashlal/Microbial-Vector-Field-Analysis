@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+# LSTM model definition
 class MM_LSTM_CLASS(nn.Module):
     def __init__(self, input_size=1, hidden_layer_size=100, num_layers=1, dropout=0.5, batch_size=1, output_size=1):
         super(MM_LSTM_CLASS, self).__init__()

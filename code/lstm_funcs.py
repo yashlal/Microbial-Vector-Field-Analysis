@@ -12,6 +12,9 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader,TensorDataset
 from MM_LSTM import MM_LSTM_CLASS
 
+# This is a general library of functions used in the other LSTM files
+
+# Resets model weights thru children
 def reset_weights(m):
         for layer in m.children():
             if hasattr(layer, 'reset_parameters'):
@@ -79,6 +82,7 @@ def test_model(model, test_inputs, fut_pred, train_window, device):
     output = new_test_inputs[-fut_pred:]
     return torch.FloatTensor(output)
 
+# full raining with return of best model state
 def full_train(num_channels, hsize, layers, dropout, batch_size, LR, num_epochs, train_dataloader, test_in, tensor_true_test_data, device):
     # Print info every 25 epochs
     print(f'hsize:{hsize}       layers:{layers}       num_epochs:{num_epochs}       dropout:{dropout}      batch_size:{batch_size}       lr:{LR}')
@@ -169,6 +173,7 @@ def all_loss_train(num_channels, hsize, layers, dropout, batch_size, LR, num_epo
     else:
         return all_test_loss
 
+# Plotting function used in lstm_main
 def plot_best_fit(true_data, prediction, model_pred_color, true_data_color, idx, labels, save, save_dir, full_test_data):
     #idx is a list of the index of the species
     #idx of the prediction and labels should correspond

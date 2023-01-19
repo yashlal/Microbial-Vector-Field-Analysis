@@ -7,7 +7,7 @@ import matplotlib.colors as mcol
 from torch.utils.data import Dataset
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
-from torch.utils.data import DataLoader,TensorDataset
+from torch.utils.data import DataLoader,TensorDataset, ConcatDataset
 import matplotlib.cm as cm
 import pickle
 import data_parsing
@@ -16,6 +16,9 @@ import torch.multiprocessing as mp
 import random
 import itertools
 from tqdm import tqdm
+import msda
+
+# This file is for the HP grid search we ran (batch size was accidentally frozen at 32)
 
 # seeded 10 test trajs for reprod.
 random.seed(0)
@@ -38,7 +41,7 @@ def hp_wrapper(config):
     LR = config[4]
 
     n_ensembles = len(test_inds)
-    total_ensemble_loss = 0
+    all_ensemble_loss = []
     en = 0
     for test_ind in test_inds:
         en += 1
@@ -46,14 +49,21 @@ def hp_wrapper(config):
         testing_traj_ind = test_ind
         batch_size = 32
         trainingData2, test_in, tensor_true_test_in, tensor_true_test_data = data_parsing.setup_testing(all_training_sequences, all_testing_sequences, testing_traj_ind, device=device)
+        cutData = msda.mixup(trainingData2)
 
-        train_dataloader = DataLoader(trainingData2, batch_size=batch_size, shuffle=True)
+        allTensorData = ConcatDataset([trainingData2, cutData])
+
+        train_dataloader = DataLoader(allTensorData, batch_size=batch_size, shuffle=True)
+        print(len(train_dataloader.dataset))
         best_epoch, ensemble_indiv_loss = lstm_funcs.all_loss_train(num_channels=15, hsize=hidden_layer_size, layers=num_layers, dropout=dropout, batch_size=batch_size, LR=LR, num_epochs=1000, train_dataloader=train_dataloader, test_in=test_in, tensor_true_test_data=tensor_true_test_data, device=device, return_best=True)
-        total_ensemble_loss += ensemble_indiv_loss
-        print(ensemble_indiv_loss)
+        all_ensemble_loss.append(ensemble_indiv_loss)
+        print((test_ind, ensemble_indiv_loss))
     
-    avg_ensemble_loss = total_ensemble_loss / n_ensembles
-    pickle_obj = (config, avg_ensemble_loss)
+    avg_ensemble_loss = sum(all_ensemble_loss) / en
+    all_ensemble_loss.append(avg_ensemble_loss)
+    return(all_ensemble_loss)
+
+    # pickle_obj = (config, avg_ensemble_loss)
     # f_path = f"hp_saves/{hidden_layer_size}_{num_layers}_{dropout}_{batch_size}_{LR}.pickle"
     # with open(f_path, 'wb') as f:
     #     pickle.dump(pickle_obj, f)
@@ -63,5 +73,5 @@ if __name__=='__main__':
     # with mp.Pool(processes=12) as pool:
     #     pool.map(hp_wrapper, search_space[0:12])
     one_config = [20, 1, 0.1, 32, 0.01]
-    hp_wrapper(one_config)
+    print(hp_wrapper(one_config))
     

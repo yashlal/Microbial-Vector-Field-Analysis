@@ -2,6 +2,8 @@ import itertools
 import pickle
 import matplotlib.pyplot as plt
 
+# This file just takes the saves from the HP grid search and outputs them sorted and makes the histogram
+
 search_space = list(itertools.product([5,10,20,50,100],[1,2,3,5],[0.1, 0.3, 0.5, 0.7], [32], [0.01, 0.001, 0.0001]))
 vals = []
 for config in search_space:
@@ -20,3 +22,7 @@ print(len(vals))
 vals.sort(key=lambda x:x[1])
 for c in vals:
     print(c)
+
+v = [x[1] for x in vals]
+plt.hist(v)
+plt.show()

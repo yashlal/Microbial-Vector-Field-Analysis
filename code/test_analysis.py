@@ -5,6 +5,8 @@ from tqdm import tqdm
 import pickle
 import numpy as np
 
+# Used to choose a representative test set
+
 all_vals = []
 for i in range(187):
     with open(f'test_saves/indiv_runs/{i}.pickle', 'rb') as f:

@@ -10,11 +10,14 @@ import collections
 import copy
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
-from torch.utils.data import DataLoader,TensorDataset
+from torch.utils.data import DataLoader,TensorDataset, ConcatDataset
 import matplotlib.cm as cm
 import pickle
 import data_parsing
 import lstm_funcs
+import msda
+
+# This is just the main script if you want to run the model one-off or something
 
 # species names and device setup
 blastT_labels = ['L. crispatus',
@@ -44,6 +47,8 @@ with open('data/train_test_sequences.pickle','rb') as f:
 testing_traj_ind = 130
 batch_size = 32
 trainingData2, test_in, tensor_true_test_in, tensor_true_test_data = data_parsing.setup_testing(all_training_sequences, all_testing_sequences, testing_traj_ind, device=device)
+msda_data = msda.standard_cutmix(trainingData2)
+trainingDataAll = ConcatDataset([trainingData2, msda_data])
 
 ensemble_size = 1 #Number of restarts
 num_channels = 15

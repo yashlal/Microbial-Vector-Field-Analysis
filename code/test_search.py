@@ -17,6 +17,8 @@ import data_parsing
 import lstm_funcs
 import multiprocessing
 
+# Used to save loss over 187 diff testing trajs to later analyze what a good representative set would be
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #Loading training data
 with open('data/train_test_sequences.pickle','rb') as f:
