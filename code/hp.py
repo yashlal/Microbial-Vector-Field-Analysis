@@ -19,6 +19,8 @@ from tqdm import tqdm
 import msda
 
 # This file is for the HP grid search we ran (batch size was accidentally frozen at 32)
+# I use this when doing runs, currently it is coded for experimenting w MSDA
+# The commented out section was for the parallelizing and pickle saving
 
 # seeded 10 test trajs for reprod.
 random.seed(0)
@@ -45,20 +47,24 @@ def hp_wrapper(config):
     en = 0
     for test_ind in test_inds:
         en += 1
-        print(f'{config}:{en}')
+        print(f'{config}:{en}/10')
         testing_traj_ind = test_ind
-        batch_size = 32
+        batch_size = 64
         trainingData2, test_in, tensor_true_test_in, tensor_true_test_data = data_parsing.setup_testing(all_training_sequences, all_testing_sequences, testing_traj_ind, device=device)
-        cutData = msda.mixup(trainingData2)
+        # Does the desired MSDA startegy and makes the big dataloader
+        train_plus_msda = [trainingData2]
+        # 4 can be changed to wtvr u want and so can which MSDA function u use
+        for i in range(9):
+            train_plus_msda.append(msda.custom_cutmix(trainingData2))
 
-        allTensorData = ConcatDataset([trainingData2, cutData])
+        allTensorData = ConcatDataset(train_plus_msda)
 
         train_dataloader = DataLoader(allTensorData, batch_size=batch_size, shuffle=True)
-        print(len(train_dataloader.dataset))
         best_epoch, ensemble_indiv_loss = lstm_funcs.all_loss_train(num_channels=15, hsize=hidden_layer_size, layers=num_layers, dropout=dropout, batch_size=batch_size, LR=LR, num_epochs=1000, train_dataloader=train_dataloader, test_in=test_in, tensor_true_test_data=tensor_true_test_data, device=device, return_best=True)
         all_ensemble_loss.append(ensemble_indiv_loss)
         print((test_ind, ensemble_indiv_loss))
     
+    # The array has all 10 loss values from the ensemble and then the avg at the last position
     avg_ensemble_loss = sum(all_ensemble_loss) / en
     all_ensemble_loss.append(avg_ensemble_loss)
     return(all_ensemble_loss)

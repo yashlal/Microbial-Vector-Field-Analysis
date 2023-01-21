@@ -17,12 +17,13 @@ for config in search_space:
             l = pickle.load(f)
             vals.append(l)
     except FileNotFoundError:
-        print(f_path)
+        pass
     
 print(len(vals))
 vals.sort(key=lambda x:x[1])
 
-hist_vals = [x[1] for x in vals]
-plt.hist(hist_vals)
-plt.show()
-
+# hist_vals = [x[1] for x in vals]
+# plt.hist(hist_vals)
+# plt.show()
+for c in range(20):
+    print(vals[c])
